@@ -17,7 +17,9 @@ namespace BIK.CoreBanking.Models
         [Column(TypeName = "decimal(18,2)")] 
         public decimal Balance { get; set; }
 
-        public int UserId { get; set; }
+        [Required]
+        [Column(TypeName = "varchar(24)")]
+        public string UserId { get; set; } = string.Empty;
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import axios from 'axios';
 import Account from './account.model.js';
 
 export const getAccounts = async (req, res) => {
@@ -75,19 +76,37 @@ export const getAccountById = async (req, res) => {
 export const createAccount = async (req, res) => {
     try {
         const accountData = req.body;
-
-        const account = new Account(accountData);
+        const userId = req.params.id; 
+        const account = new Account({
+            ...accountData,
+            user: userId
+        });
         await account.save();
 
+        try {
+            await axios.post('http://localhost:5000/BIK/v1/Accounts/sync-account', {
+                AccountNumber: account.numberAccount || account._id.toString(),
+                UserId: userId,
+                InitialBalance: 0 
+            });
+        } catch (coreBankingError) {
+            await Account.findByIdAndDelete(account._id);
+            console.error("Error al sincronizar con C#:", coreBankingError.message);
+            return res.status(502).json({
+                success: false,
+                message: 'Error al sincronizar con el motor financiero. Se canceló la creación.',
+            });
+        }
+
         res.status(201).json({
-            succes: true,
-            message: 'Cuenta creada exitosamente',
+            success: true,
+            message: 'Cuenta creada y sincronizada exitosamente en ambos sistemas',
             data: account
         });
 
     } catch (error) {
         res.status(500).json({
-            succes: false,
+            success: false,
             message: 'Error al crear la cuenta',
             error: error.message
         });
